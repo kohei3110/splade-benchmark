@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Dict, List
 
 from datasets import load_dataset
-from tqdm import tqdm
 
 DEFAULT_SEQ_LENGTHS = [128, 256, 512, 1024]
 DEFAULT_SAMPLES_PER_LEN = 500
