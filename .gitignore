@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.venv/
+venv/
+.env
+.env.local
+
+# Data & results
+data/
+results/metrics/
+results/plots/
+results/logs/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
