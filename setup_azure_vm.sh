@@ -33,7 +33,7 @@ log "Ubuntu version: ${UBUNTU_VERSION}"
 log "Installing NVIDIA driver 580 (recommended for A100)..."
 apt install -y nvidia-driver-580 nvidia-utils-580
 
-log "Setting up CUDA 12.6 toolkit..."
+log "Setting up CUDA toolkit..."
 CUDA_REPO="ubuntu2204"
 if [[ "${UBUNTU_VERSION}" == "24.04" ]]; then
   CUDA_REPO="ubuntu2404"
