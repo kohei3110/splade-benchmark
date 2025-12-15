@@ -32,7 +32,7 @@ def load_texts(seq_length: int) -> List[str]:
                 if isinstance(payload, dict) and "texts" in payload:
                     return payload["texts"]
     raise FileNotFoundError(
-        f"No dataset found for seq_length={seq_length}. Run scripts/prepare_data.py first."
+        f"No dataset found for seq_length={seq_length}. Run 'python scripts/prepare_data.py' or './run_full_benchmark.sh' from the repository root first."
     )
 
 
