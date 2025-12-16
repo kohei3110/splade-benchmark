@@ -9,15 +9,25 @@ Custom benchmarking toolkit for `bizreach-inc/light-splade-japanese-14M` on Azur
 
 ## 1) VM Bootstrap (run as root)
 ```
-sudo ./setup_azure_vm.sh
+sudo ./setup_azure_vm.sh --device cuda
 sudo reboot
+```
+
+### CPU VM (e.g., Standard_D32s_v6)
+```bash
+sudo ./setup_azure_vm.sh --device cpu
 ```
 
 ## 2) Python Environment
 ```
 sudo apt-get update && sudo apt-get install -y python3-venv python3.12-venv  # if ensurepip/venv is missing
-./setup_python_env.sh  # creates ~/splade_benchmark_env
+./setup_python_env.sh --device cuda  # creates ~/splade_benchmark_env
 source ~/splade_benchmark_env/bin/activate
+```
+
+### CPU-only environment
+```bash
+./setup_python_env.sh --device cpu
 ```
 
 ## 3) Prepare Data, Run Benchmark, Visualize
@@ -25,6 +35,16 @@ source ~/splade_benchmark_env/bin/activate
 ### Default (14M model)
 ```
 ./run_full_benchmark.sh
+```
+
+### Query-centric E2E profile (short + long queries)
+```bash
+PROFILE=online DEVICE=cuda VM_SKU=NC24ads_A100_v4 ./run_full_benchmark.sh
+```
+
+### CPU benchmark example
+```bash
+PROFILE=online DEVICE=cpu VM_SKU=Standard_D32s_v6 ./run_full_benchmark.sh
 ```
 
 ### Specify different model
@@ -65,6 +85,10 @@ done
 - Measure: 100 iterations
 - Precision: FP32
 - OOM handling: auto-halves batch size on CUDA OOM
+
+## Notes on CPU/GPU parity
+- Use `--device cpu|cuda` (or `DEVICE=...`) to force the execution device.
+- GPU monitoring (NVML) is best-effort: if NVML is unavailable, GPU metrics are omitted and the benchmark continues.
 
 ## Troubleshooting
 - OOM: batch size auto-halves on CUDA OOM.

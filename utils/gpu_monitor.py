@@ -3,7 +3,12 @@ import time
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
-import pynvml
+try:
+    import pynvml  # type: ignore
+except ModuleNotFoundError:  # pragma: no cover
+    pynvml = None
+
+
 @dataclass
 class GpuSample:
     timestamp: float
@@ -46,14 +51,25 @@ class GpuMonitor:
         self._stop_event = threading.Event()
         self._thread: Optional[threading.Thread] = None
         self.stats = GpuStats()
+        self._nvml_initialized = False
+        self.disabled_reason: Optional[str] = None
 
     def _init_nvml(self):
+        if pynvml is None:
+            self._nvml_initialized = False
+            self.disabled_reason = "pynvml is not installed"
+            return
         try:
             pynvml.nvmlInit()
+            self._nvml_initialized = True
         except pynvml.NVMLError as exc:
-            raise RuntimeError(f"Failed to initialize NVML: {exc}")
+            self._nvml_initialized = False
+            self.disabled_reason = f"NVML init failed: {exc}"
 
     def _collect(self):
+        if not self._nvml_initialized:
+            return
+
         handle = pynvml.nvmlDeviceGetHandleByIndex(self.device_index)
         while not self._stop_event.is_set():
             util = pynvml.nvmlDeviceGetUtilizationRates(handle)
@@ -74,6 +90,9 @@ class GpuMonitor:
 
     def start(self):
         self._init_nvml()
+        if not self._nvml_initialized:
+            # Best-effort: skip monitoring when NVML is unavailable.
+            return
         self._stop_event.clear()
         self._thread = threading.Thread(target=self._collect, daemon=True)
         self._thread.start()
@@ -82,10 +101,13 @@ class GpuMonitor:
         self._stop_event.set()
         if self._thread:
             self._thread.join(timeout=5)
-        try:
-            pynvml.nvmlShutdown()
-        except pynvml.NVMLError:
-            pass
+        if self._nvml_initialized:
+            try:
+                pynvml.nvmlShutdown()
+            except pynvml.NVMLError:
+                pass
+            finally:
+                self._nvml_initialized = False
 
     def summary(self) -> Dict[str, float]:
         return self.stats.summary()
