@@ -7,6 +7,39 @@ set -euo pipefail
 # - Installs common utilities (nvtop, htop, build-essential)
 # Run as root: sudo ./setup_azure_vm.sh
 
+DEVICE="cuda"
+usage() {
+  cat <<'USAGE'
+Usage: sudo ./setup_azure_vm.sh [--device cpu|cuda]
+
+--device cpu   Install only CPU prerequisites (no NVIDIA/CUDA).
+--device cuda  Install NVIDIA driver + CUDA toolkit (default).
+USAGE
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --device)
+      DEVICE="${2:-}"
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Unknown argument: $1" >&2
+      usage
+      exit 1
+      ;;
+  esac
+done
+
+if [[ "${DEVICE}" != "cpu" && "${DEVICE}" != "cuda" ]]; then
+  echo "--device must be 'cpu' or 'cuda' (got: ${DEVICE})" >&2
+  exit 1
+fi
+
 if [[ "${EUID}" -ne 0 ]]; then
   echo "Please run as root (sudo)." >&2
   exit 1
@@ -20,11 +53,19 @@ apt full-upgrade -y
 
 log "Installing base utilities..."
 apt install -y --no-install-recommends \
-  ubuntu-drivers-common \
   build-essential \
   wget curl ca-certificates gnupg lsb-release \
   htop \
   python3-venv python3-pip
+
+if [[ "${DEVICE}" == "cpu" ]]; then
+  log "Device=cpu selected: skipping NVIDIA driver/CUDA installation."
+  log "Done. You can now run ./setup_python_env.sh --device cpu"
+  exit 0
+fi
+
+log "Installing ubuntu-drivers-common (for GPU driver detection)..."
+apt install -y --no-install-recommends ubuntu-drivers-common
 
 log "Detecting Ubuntu version..."
 UBUNTU_VERSION=$(lsb_release -rs)

@@ -2,10 +2,44 @@
 set -euo pipefail
 
 # Python environment setup for SPLADE benchmarking
-# Usage: ./setup_python_env.sh [ENV_DIR]
+# Usage: ./setup_python_env.sh [--device cpu|cuda] [ENV_DIR]
 # Default ENV_DIR: ~/splade_benchmark_env
 
-ENV_DIR=${1:-"${HOME}/splade_benchmark_env"}
+DEVICE="cuda"
+ENV_DIR="${HOME}/splade_benchmark_env"
+
+usage() {
+  cat <<'USAGE'
+Usage: ./setup_python_env.sh [--device cpu|cuda] [ENV_DIR]
+
+--device cpu   Install CPU-only PyTorch wheels.
+--device cuda  Install CUDA-enabled PyTorch wheels (default).
+USAGE
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --device)
+      DEVICE="${2:-}"
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      # Backward-compatible positional ENV_DIR
+      ENV_DIR="$1"
+      shift
+      ;;
+  esac
+done
+
+if [[ "${DEVICE}" != "cpu" && "${DEVICE}" != "cuda" ]]; then
+  echo "--device must be 'cpu' or 'cuda' (got: ${DEVICE})" >&2
+  exit 1
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REQ_FILE="${SCRIPT_DIR}/requirements.txt"
 
@@ -43,9 +77,15 @@ source "${ENV_DIR}/bin/activate"
 log "Upgrading pip/setuptools/wheel..."
 pip install --upgrade pip setuptools wheel
 
-log "Installing PyTorch (CUDA 12.1 wheels)..."
-pip install --index-url https://download.pytorch.org/whl/cu121 \
-  torch==2.3.1 torchvision==0.18.1 torchaudio==2.3.1
+if [[ "${DEVICE}" == "cuda" ]]; then
+  log "Installing PyTorch (CUDA 12.1 wheels)..."
+  pip install --index-url https://download.pytorch.org/whl/cu121 \
+    torch==2.3.1 torchvision==0.18.1 torchaudio==2.3.1
+else
+  log "Installing PyTorch (CPU-only wheels)..."
+  pip install --index-url https://download.pytorch.org/whl/cpu \
+    torch==2.3.1
+fi
 
 log "Installing Python dependencies from requirements.txt..."
 pip install -r "${REQ_FILE}"

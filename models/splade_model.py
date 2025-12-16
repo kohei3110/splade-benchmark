@@ -20,21 +20,39 @@ class EncodeOutput:
 
 
 class SpladeModelWrapper:
-    def __init__(self, model_name: str = "bizreach-inc/light-splade-japanese-14M", device: str = "cuda"):
+    def __init__(
+        self,
+        model_name: str = "bizreach-inc/light-splade-japanese-14M",
+        device: str = "cuda",
+        padding_policy: str = "longest",
+    ):
         self.model_name = model_name
-        self.device = torch.device(device if torch.cuda.is_available() else "cpu")
+        self.padding_policy = padding_policy
+
+        if device == "cuda":
+            if not torch.cuda.is_available():
+                raise RuntimeError("--device cuda was requested, but torch.cuda.is_available() is False")
+            self.device = torch.device("cuda")
+        else:
+            self.device = torch.device("cpu")
         LOGGER.info("Loading model %s on %s", model_name, self.device)
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModelForMaskedLM.from_pretrained(model_name)
         self.model.to(self.device)
         self.model.eval()
-        torch.backends.cudnn.benchmark = True
+        if self.device.type == "cuda":
+            torch.backends.cudnn.benchmark = True
 
     @torch.inference_mode()
     def encode_batch(self, texts: List[str], max_length: int) -> EncodeOutput:
+        if self.padding_policy == "max_length":
+            padding = "max_length"
+        else:
+            padding = True
+
         tokenized = self.tokenizer(
             texts,
-            padding=True,
+            padding=padding,
             truncation=True,
             max_length=max_length,
             return_tensors="pt",
